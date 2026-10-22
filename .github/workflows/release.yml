@@ -22,7 +22,7 @@ jobs:
           $metadata = cargo metadata --locked --no-deps --format-version 1 | ConvertFrom-Json
           $version = ($metadata.packages | Where-Object name -eq 'miclift').version
           if ($env:GITHUB_REF_NAME -cne "v$version") { throw "Tag must match Cargo.toml version v$version" }
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry
