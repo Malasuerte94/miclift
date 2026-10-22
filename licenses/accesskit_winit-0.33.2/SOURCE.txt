@@ -1,0 +1,4 @@
+accesskit_winit 0.33.2
+License: Apache-2.0
+Source: https://github.com/AccessKit/accesskit
+Published crate: https://crates.io/crates/accesskit_winit/0.33.2

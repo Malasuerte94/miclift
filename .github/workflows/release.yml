@@ -1,0 +1,84 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Validate version tag
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.94.1 --profile minimal --component rustfmt --component clippy --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { throw 'Rust setup failed' }
+          $metadata = cargo metadata --locked --no-deps --format-version 1 | ConvertFrom-Json
+          $version = ($metadata.packages | Where-Object name -eq 'miclift').version
+          if ($env:GITHUB_REF_NAME -cne "v$version") { throw "Tag must match Cargo.toml version v$version" }
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: windows-release-1.94.1-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'rust-toolchain.toml', '.cargo/config.toml') }}
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --all-targets --all-features -- -D warnings
+      - run: cargo test --locked --all-targets
+      - name: Build public release
+        shell: pwsh
+        env:
+          DRIVER_INTEGRATION_APPROVED: ${{ vars.VBCABLE_INTEGRATION_APPROVED }}
+        run: |
+          if ($env:DRIVER_INTEGRATION_APPROVED -eq 'true') {
+            cargo build --locked --release --bins --features licensed-driver-setup
+          } else {
+            cargo build --locked --release --bins
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Release build failed' }
+          & target/release/miclift-diagnostics.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Release self-test failed' }
+      - name: Package (optionally Authenticode sign)
+        shell: pwsh
+        env:
+          MICLIFT_CERTIFICATE_BASE64: ${{ secrets.MICLIFT_CERTIFICATE_BASE64 }}
+          MICLIFT_CERTIFICATE_PASSWORD: ${{ secrets.MICLIFT_CERTIFICATE_PASSWORD }}
+        run: |
+          ./tools/generate-notices.ps1
+          ./tools/package.ps1
+      - name: Installer smoke test
+        shell: pwsh
+        run: ./tools/test-installer.ps1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-files
+          path: dist/*
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-files
+          path: release-files
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          args=("$VERSION_TAG" release-files/* --verify-tag --title "MicLift $VERSION_TAG" --generate-notes)
+          if [[ "$VERSION_TAG" == *-* ]]; then args+=(--prerelease); fi
+          gh release create "${args[@]}"

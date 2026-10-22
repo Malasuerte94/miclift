@@ -1,0 +1,4 @@
+profiling 1.0.18
+License: MIT OR Apache-2.0
+Source: https://github.com/aclysma/profiling
+Published crate: https://crates.io/crates/profiling/1.0.18

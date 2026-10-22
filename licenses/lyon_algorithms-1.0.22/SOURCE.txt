@@ -1,0 +1,4 @@
+lyon_algorithms 1.0.22
+License: MIT OR Apache-2.0
+Source: https://github.com/nical/lyon
+Published crate: https://crates.io/crates/lyon_algorithms/1.0.22

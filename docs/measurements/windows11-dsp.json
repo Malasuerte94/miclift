@@ -1,0 +1,9 @@
+{
+  "all_basic_effects": true,
+  "block_frames": 128,
+  "dsp_max_us": 43.6,
+  "dsp_p99_upper_us": 4,
+  "elapsed_ms": 29.3378,
+  "frames": 1280000,
+  "sample_rate": 48000
+}

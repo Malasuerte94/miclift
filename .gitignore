@@ -1,0 +1,6 @@
+/target/
+/dist/
+/installer/output/
+*.pfx
+*.p12
+*.log

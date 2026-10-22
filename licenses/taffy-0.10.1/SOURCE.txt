@@ -1,0 +1,4 @@
+taffy 0.10.1
+License: MIT
+Source: https://github.com/DioxusLabs/taffy
+Published crate: https://crates.io/crates/taffy/0.10.1

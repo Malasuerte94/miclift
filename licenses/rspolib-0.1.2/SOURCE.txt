@@ -1,0 +1,4 @@
+rspolib 0.1.2
+License: MIT
+Source: https://github.com/mondeja/rspolib
+Published crate: https://crates.io/crates/rspolib/0.1.2

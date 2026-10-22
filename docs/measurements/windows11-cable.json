@@ -1,0 +1,11 @@
+{
+  "capture_period_frames": 441,
+  "capture_sample_rate": 44100,
+  "correlation": 0.9998625864565921,
+  "discontinuities": 1,
+  "latency_ms": 8.454049659729003,
+  "measurement": "VB-CABLE endpoint-clock offset; excludes microphone, MicLift DSP and physical listening",
+  "note": "Depends on driver-reported clocks. Not acoustic end-to-end latency.",
+  "render_period_frames": 480,
+  "render_sample_rate": 48000
+}

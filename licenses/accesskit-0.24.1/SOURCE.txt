@@ -1,0 +1,4 @@
+accesskit 0.24.1
+License: MIT OR Apache-2.0
+Source: https://github.com/AccessKit/accesskit
+Published crate: https://crates.io/crates/accesskit/0.24.1

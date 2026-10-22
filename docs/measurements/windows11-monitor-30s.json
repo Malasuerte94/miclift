@@ -1,0 +1,91 @@
+{
+  "cable_period_us": 10000,
+  "cable_queue_max_frames": 952,
+  "cable_underruns": 0,
+  "capture_discontinuities": 1,
+  "capture_period_us": 10000,
+  "cpu_one_core_percent": 0.4686072669125711,
+  "cpu_total_percent": 0.014643977188614633,
+  "dsp_p99_upper_us": 16,
+  "duration_seconds": 30.0091302,
+  "measurement": "headless engine process resources; not the Slint window or physical end-to-end latency",
+  "monitor_period_us": 10000,
+  "monitor_underruns": 0,
+  "overrun_frames": 0,
+  "private_bytes_final": 2211840,
+  "private_bytes_initial": 2191360,
+  "private_bytes_max": 2273280,
+  "samples": [
+    {
+      "private_bytes": 2191360,
+      "queue_frames": 952,
+      "second": 1
+    },
+    {
+      "private_bytes": 2195456,
+      "queue_frames": 936,
+      "second": 2
+    },
+    {
+      "private_bytes": 2215936,
+      "queue_frames": 918,
+      "second": 3
+    },
+    {
+      "private_bytes": 2215936,
+      "queue_frames": 899,
+      "second": 4
+    },
+    {
+      "private_bytes": 2224128,
+      "queue_frames": 881,
+      "second": 5
+    },
+    {
+      "private_bytes": 2224128,
+      "queue_frames": 864,
+      "second": 6
+    },
+    {
+      "private_bytes": 2232320,
+      "queue_frames": 847,
+      "second": 7
+    },
+    {
+      "private_bytes": 2232320,
+      "queue_frames": 831,
+      "second": 8
+    },
+    {
+      "private_bytes": 2236416,
+      "queue_frames": 816,
+      "second": 9
+    },
+    {
+      "private_bytes": 2236416,
+      "queue_frames": 802,
+      "second": 10
+    },
+    {
+      "private_bytes": 2252800,
+      "queue_frames": 739,
+      "second": 15
+    },
+    {
+      "private_bytes": 2256896,
+      "queue_frames": 690,
+      "second": 20
+    },
+    {
+      "private_bytes": 2265088,
+      "queue_frames": 652,
+      "second": 25
+    },
+    {
+      "private_bytes": 2211840,
+      "queue_frames": 623,
+      "second": 30
+    }
+  ],
+  "seconds_not_running": 0
+}

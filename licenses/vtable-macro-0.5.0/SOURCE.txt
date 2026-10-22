@@ -1,0 +1,4 @@
+vtable-macro 0.5.0
+License: MIT OR Apache-2.0
+Source: https://github.com/slint-ui/slint
+Published crate: https://crates.io/crates/vtable-macro/0.5.0

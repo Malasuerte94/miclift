@@ -1,0 +1,4 @@
+spirv 0.4.0+sdk-1.4.341.0
+License: Apache-2.0
+Source: https://github.com/gfx-rs/rspirv
+Published crate: https://crates.io/crates/spirv/0.4.0+sdk-1.4.341.0

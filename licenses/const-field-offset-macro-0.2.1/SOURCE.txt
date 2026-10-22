@@ -1,0 +1,4 @@
+const-field-offset-macro 0.2.1
+License: MIT OR Apache-2.0
+Source: https://github.com/slint-ui/slint
+Published crate: https://crates.io/crates/const-field-offset-macro/0.2.1

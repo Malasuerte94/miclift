@@ -1,0 +1,4 @@
+i-slint-core-macros 1.18.1
+License: GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0
+Source: https://github.com/slint-ui/slint
+Published crate: https://crates.io/crates/i-slint-core-macros/1.18.1

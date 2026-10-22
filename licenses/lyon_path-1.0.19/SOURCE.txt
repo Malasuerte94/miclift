@@ -1,0 +1,4 @@
+lyon_path 1.0.19
+License: MIT OR Apache-2.0
+Source: https://github.com/nical/lyon
+Published crate: https://crates.io/crates/lyon_path/1.0.19

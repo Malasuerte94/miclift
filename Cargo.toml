@@ -1,0 +1,43 @@
+[package]
+name = "miclift"
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.94"
+license = "MIT"
+description = "A lightweight Windows microphone booster and voice processor"
+default-run = "miclift"
+
+[features]
+default = []
+# Enable only after obtaining the rights required to integrate VB-CABLE setup.
+licensed-driver-setup = []
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rtrb = "0.4"
+winreg = "0.55"
+png = "0.18"
+slint = { version = "=1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-18", "system-tray", "accessibility"] }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Media_Audio", "Win32_Media_KernelStreaming", "Win32_Media_Multimedia", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Threading", "Win32_System_Registry", "Win32_System_Performance", "Win32_System_ProcessStatus", "Win32_UI_Shell", "Win32_UI_Shell_PropertiesSystem", "Win32_UI_WindowsAndMessaging", "Win32_Devices_FunctionDiscovery", "Win32_System_Variant", "Win32_System_Memory", "Win32_Security"] }
+
+[build-dependencies]
+slint-build = "=1.18.1"
+winresource = "0.1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[[bin]]
+name = "miclift"
+path = "src/main.rs"
+
+[[bin]]
+name = "miclift-diagnostics"
+path = "src/bin/diagnostics.rs"

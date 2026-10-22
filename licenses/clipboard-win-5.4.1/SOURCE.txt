@@ -1,0 +1,4 @@
+clipboard-win 5.4.1
+License: BSL-1.0
+Source: https://github.com/DoumanAsh/clipboard-win
+Published crate: https://crates.io/crates/clipboard-win/5.4.1
