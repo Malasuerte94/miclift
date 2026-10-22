@@ -389,8 +389,14 @@ pub struct Status {
     pub devices: Devices,
     pub input_rate: u32,
 }
+// The control worker only needs routing; keep the profile library on the UI side.
+struct Routing {
+    input_id: String,
+    cable_id: String,
+    monitor_id: String,
+}
 enum Command {
-    Start(Config),
+    Start(Routing),
     Stop,
     Quit,
 }
@@ -428,7 +434,7 @@ impl Engine {
         let (sender, receiver) = mpsc::channel();
         let (p, t, s) = (parameters.clone(), telemetry.clone(), status.clone());
         let worker = thread::spawn(move || {
-            let mut config: Option<Config> = None;
+            let mut config: Option<Routing> = None;
             let mut pipeline: Option<Pipeline> = None;
             let mut retry = Instant::now();
             let mut discovery = Instant::now();
@@ -518,7 +524,11 @@ impl Engine {
         }
     }
     pub fn start(&self, config: &Config) {
-        let _ = self.sender.send(Command::Start(config.clone()));
+        let _ = self.sender.send(Command::Start(Routing {
+            input_id: config.input_id.clone(),
+            cable_id: config.cable_id.clone(),
+            monitor_id: config.monitor_id.clone(),
+        }));
     }
     pub fn stop(&self) {
         let _ = self.sender.send(Command::Stop);
@@ -541,7 +551,7 @@ impl Drop for Engine {
 type CaptureSinks = (Producer<f32>, Option<Producer<f32>>);
 impl Pipeline {
     fn start(
-        config: &Config,
+        config: &Routing,
         parameters: Arc<Parameters>,
         telemetry: Arc<Telemetry>,
     ) -> Result<(Self, u32, bool)> {

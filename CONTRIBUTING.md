@@ -7,7 +7,7 @@ Use Windows x64, the pinned Rust toolchain, and the MSVC C++ build tools. Keep a
 - `audio`: COM/WASAPI discovery, minimum-period negotiation with shared-mode fallback, capture/render threads, recovery supervisor. COM objects remain on their creating thread. An audio failure stops the whole session before retrying the saved devices.
 - `dsp`, `resample`, `shared`: bounded audio processing, streaming ASRC, nonblocking parameter snapshots and atomic telemetry. No mutexes, heap allocations, file/network access, logging, or UI calls in healthy audio loops. Configure and allocate before starting streams.
 - `config`, `platform`, application controller: versioned local profiles, debounced atomic persistence, native singleton signaling, HKCU startup registration, user-interface lifetime and tray.
-- `ui`: Slint components with static EQ response and ≤30 Hz meters while visible.
+- `ui`: Slint components with static EQ response and ≤30 Hz meters while visible. Named profiles are explicitly saved snapshots, independent of endpoint routing. EQ presets change only EQ. Keep animations short, respect reduced motion and avoid looping graphics.
 
 Run `cargo fmt --all`, `cargo clippy --locked --all-targets --all-features -- -D warnings`, and `cargo test --locked --all-targets` before opening a PR. Changes to audio require relevant DSP/ASRC tests and real-device diagnostics. CI runners do not validate microphone timing or Bluetooth behavior.
 

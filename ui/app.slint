@@ -1,4 +1,51 @@
-import { Button, Slider, CheckBox, ComboBox, SpinBox, ScrollView, AboutSlint } from "std-widgets.slint";
+import { Slider, CheckBox, ComboBox, SpinBox, LineEdit, AboutSlint } from "std-widgets.slint";
+
+export global Motion { in-out property <bool> enabled: true; }
+
+component Button inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <bool> primary;
+    in property <bool> danger;
+    callback clicked;
+    min-width: label.preferred-width + 30px;
+    min-height: 36px;
+    preferred-width: label.preferred-width + 30px;
+    preferred-height: 36px;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: focus.has-focus ? #a5ffda : root.primary ? #62dba8 : area.has-hover ? #50697b : #304252;
+    background: !root.enabled ? #17212b : root.primary ? (area.pressed ? #43bd8a : area.has-hover ? #91ffd0 : #72f1bd) : area.pressed ? #2c4353 : area.has-hover ? #243646 : #1a2936;
+    opacity: root.enabled ? 1 : 0.45;
+    animate background, border-color, opacity { duration: Motion.enabled ? 120ms : 0ms; easing: ease-out; }
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    forward-focus: focus;
+    label := Text {
+        text: root.text;
+        color: !root.enabled ? #b8c7d5 : root.primary ? #0b2920 : root.danger ? #ffb0aa : #e3edf5;
+        font-size: 12px;
+        font-weight: root.primary ? 600 : 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+        y: area.pressed && root.enabled ? 1px : 0px;
+        animate y { duration: Motion.enabled ? 70ms : 0ms; easing: ease-out; }
+    }
+    focus := FocusScope {
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if (root.enabled && (event.text == Key.Space || event.text == Key.Return)) { root.clicked(); return accept; }
+            return reject;
+        }
+    }
+    area := TouchArea { enabled: root.enabled; mouse-cursor: pointer; clicked => { focus.focus(); root.clicked(); } }
+}
 
 export struct Band { frequency: float, gain: float, q: float }
 
@@ -18,6 +65,12 @@ component Panel inherits Rectangle {
     border-width: 1px;
     border-radius: 12px;
 }
+component Page inherits VerticalLayout {
+    property <float> reveal: 0;
+    init => { reveal = 1; }
+    opacity: Motion.enabled ? reveal : 1;
+    animate reveal { duration: Motion.enabled ? 170ms : 0ms; easing: ease-out; }
+}
 component Nav inherits Rectangle {
     in property <string> text;
     in property <bool> selected;
@@ -29,7 +82,9 @@ component Nav inherits Rectangle {
     height: 43px;
     border-radius: 7px;
     background: selected ? #203b35 : touch.has-hover ? #1b2732 : transparent;
-    Text { x: 16px; text: root.text; color: root.selected ? #72f1bd : #a3b1c0; font-size: 14px; vertical-alignment: center; }
+    animate background { duration: Motion.enabled ? 140ms : 0ms; easing: ease-out; }
+    Rectangle { x: 0px; y: 12px; width: 3px; height: 19px; border-radius: 2px; background: #72f1bd; opacity: root.selected ? 1 : 0; animate opacity { duration: Motion.enabled ? 140ms : 0ms; } }
+    Text { x: 16px; text: root.text; color: root.selected ? #72f1bd : #a3b1c0; font-size: 14px; vertical-alignment: center; animate color { duration: Motion.enabled ? 140ms : 0ms; } }
     border-width: focus.has-focus ? 1px : 0px;
     border-color: #72f1bd;
     focus := FocusScope {
@@ -38,7 +93,7 @@ component Nav inherits Rectangle {
             return reject;
         }
     }
-    touch := TouchArea { clicked => { focus.focus(); root.clicked(); } }
+    touch := TouchArea { mouse-cursor: pointer; clicked => { focus.focus(); root.clicked(); } }
 }
 component Meter inherits Rectangle {
     in property <float> level;
@@ -52,9 +107,9 @@ export component MainWindow inherits Window {
     title: "MicLift";
     icon: @image-url("../assets/miclift.png");
     preferred-width: 990px;
-    preferred-height: 750px;
+    preferred-height: 820px;
     min-width: 900px;
-    min-height: 700px;
+    min-height: 780px;
     background: #0d141d;
     default-font-family: "Segoe UI";
     default-font-size: 14px;
@@ -94,6 +149,20 @@ export component MainWindow inherits Window {
     in-out property <bool> start-minimized;
     in-out property <bool> start-audio;
     in-out property <bool> close-tray: true;
+    in-out property <bool> reduce-motion;
+    in property <[string]> profile-names;
+    in-out property <int> profile-index;
+    in property <bool> profile-modified;
+    in property <bool> profile-default;
+    in property <bool> can-delete-profile;
+    in property <string> default-profile-label;
+    in property <string> profile-details;
+    in-out property <string> new-profile-name;
+    in-out property <bool> pending-profile;
+    in property <string> pending-profile-name;
+    in-out property <bool> confirm-delete;
+    in property <[string]> eq-presets;
+    in-out property <int> eq-preset-index;
     in property <string> setup-label: "Open official VB-CABLE setup";
     in property <bool> setup-busy;
     in property <string> version;
@@ -110,6 +179,8 @@ export component MainWindow inherits Window {
     callback processing(int, float);
     callback preference(int, bool);
     callback preset(string);
+    callback select-profile(int);
+    callback profile-action(int, string);
     callback setup;
     callback minimize;
     callback close-window;
@@ -146,6 +217,7 @@ export component MainWindow inherits Window {
                     Nav { text: "Overview"; selected: root.page == 0; clicked => { root.page = 0; } }
                     Nav { text: "Equalizer"; selected: root.page == 1; clicked => { root.page = 1; } }
                     Nav { text: "Processing"; selected: root.page == 2; clicked => { root.page = 2; } }
+                    Nav { text: "Profiles"; selected: root.page == 5; clicked => { root.page = 5; } }
                     Nav { text: "Settings"; selected: root.page == 3; clicked => { root.page = 3; } }
                     Rectangle { vertical-stretch: 1; background: transparent; }
                     Label { text: root.running ? "●  ENGINE LIVE" : "○  ENGINE IDLE"; color: root.running ? #72f1bd : #8b99a9; height: 24px; font-size: 10px; }
@@ -159,14 +231,25 @@ export component MainWindow inherits Window {
                 HorizontalLayout {
                     VerticalLayout {
                         spacing: 5px;
-                        Heading { text: root.page == 0 ? "Make yourself heard." : root.page == 1 ? "Shape your sound." : root.page == 2 ? "A cleaner signal." : root.page == 3 ? "Set it. Keep it." : "Small app. Clear voice."; }
-                        Label { text: root.page == 0 ? "Real-time microphone boost, with room to spare." : root.page == 1 ? "Five parametric bands. Changes are applied live." : root.page == 2 ? "Lightweight processing. Every effect is optional." : root.page == 3 ? "Devices, startup and background behavior." : "MicLift · open-source microphone processing for Windows"; }
+                        Heading { text: root.page == 0 ? "Make yourself heard." : root.page == 1 ? "Shape your sound." : root.page == 2 ? "A cleaner signal." : root.page == 3 ? "Set it. Keep it." : root.page == 5 ? "Your sound, saved." : "Small app. Clear voice."; }
+                        Label { text: root.page == 0 ? "Real-time microphone boost, with room to spare." : root.page == 1 ? "Five parametric bands. Changes are applied live." : root.page == 2 ? "Lightweight processing. Every effect is optional." : root.page == 3 ? "Devices, startup and background behavior." : root.page == 5 ? "Boost, EQ and processing. Switch your whole setup in a click." : "MicLift · open-source microphone processing for Windows"; }
                     }
                     Rectangle { horizontal-stretch: 1; background: transparent; }
-                    Button { text: root.requested ? "Stop audio" : "Start audio"; width: 117px; clicked => { root.toggle-audio(); } }
+                    Button { text: root.requested ? "Stop audio" : "Start audio"; primary: !root.requested; width: 117px; clicked => { root.toggle-audio(); } }
                 }
 
-                if root.page == 0: VerticalLayout {
+                if root.page <= 2: Panel {
+                    height: 48px;
+                    HorizontalLayout {
+                        padding-left: 12px; padding-right: 8px; padding-top: 6px; padding-bottom: 6px; spacing: 12px;
+                        Label { text: "PROFILE"; font-size: 10px; width: 48px; }
+                        ComboBox { model: root.profile-names; current-index <=> root.profile-index; selected(_) => { root.select-profile(self.current-index); } horizontal-stretch: 1; }
+                        Label { text: root.profile-modified ? "● Unsaved" : root.profile-default ? "★ Default" : "Saved"; color: root.profile-modified ? #ffca8b : #72f1bd; width: 77px; font-size: 11px; }
+                        Button { text: "Manage"; clicked => { root.page = 5; } }
+                    }
+                }
+
+                if root.page == 0: Page {
                     spacing: 12px;
                     Panel {
                         height: 90px;
@@ -227,14 +310,13 @@ export component MainWindow inherits Window {
                     }
                 }
 
-                if root.page == 1: VerticalLayout {
+                if root.page == 1: Page {
                     spacing: 15px;
                     HorizontalLayout {
                         CheckBox { text: "Equalizer enabled"; checked <=> root.eq-enabled; toggled => { root.processing(0, self.checked ? 1 : 0); } }
                         Rectangle { horizontal-stretch: 1; background: transparent; }
-                        Button { text: "Flat"; clicked => { root.preset("Flat"); } }
-                        Button { text: "Voice"; clicked => { root.preset("Voice"); } }
-                        Button { text: "Warm"; clicked => { root.preset("Warm"); } }
+                        Label { text: root.eq-preset-index < 0 ? "Custom EQ" : "EQ PRESET"; font-size: 10px; }
+                        ComboBox { width: 170px; model: root.eq-presets; current-index <=> root.eq-preset-index; selected(name) => { root.preset(name); } }
                     }
                     Panel {
                         height: 120px;
@@ -257,11 +339,11 @@ export component MainWindow inherits Window {
                             }
                         }
                     }
-                    Label { text: "EQ profiles are saved separately for each microphone."; }
+                    Label { text: "EQ presets change only the equalizer. Save the full sound in Profiles."; }
                     Rectangle { vertical-stretch: 1; background: transparent; }
                 }
 
-                if root.page == 2: VerticalLayout {
+                if root.page == 2: Page {
                     spacing: 15px;
                     Panel { height: 90px; VerticalLayout { padding: 20px; spacing: 9px; CheckBox { text: "High-pass filter · 80 Hz"; checked <=> root.high-pass; toggled => { root.processing(1, self.checked ? 1 : 0); } } Label { text: "Reduce low rumble and desk vibrations."; } } }
                     Panel { height: 130px; VerticalLayout { padding: 20px; spacing: 12px; CheckBox { text: "Noise gate"; checked <=> root.gate; toggled => { root.processing(2, self.checked ? 1 : 0); } } Label { text: "Threshold  " + round(root.gate-threshold) + " dBFS"; } Slider { minimum: -80; maximum: -12; value <=> root.gate-threshold; changed(value) => { root.processing(3, value); } } } }
@@ -270,10 +352,49 @@ export component MainWindow inherits Window {
                     Rectangle { vertical-stretch: 1; background: transparent; }
                 }
 
-                if root.page == 3: VerticalLayout {
+                if root.page == 5: Page {
+                    spacing: 16px;
+                    Panel {
+                        height: 235px;
+                        VerticalLayout {
+                            padding: 22px; spacing: 14px;
+                            HorizontalLayout {
+                                Label { text: "SAVED PROFILES"; font-size: 11px; }
+                                Label { text: root.profile-modified ? "● Unsaved changes" : "All changes saved"; color: root.profile-modified ? #ffca8b : #72f1bd; horizontal-alignment: right; font-size: 11px; }
+                            }
+                            ComboBox { model: root.profile-names; current-index <=> root.profile-index; selected(_) => { root.select-profile(self.current-index); } }
+                            Label { text: root.profile-details; wrap: word-wrap; color: #c4d4e1; }
+                            HorizontalLayout {
+                                spacing: 10px;
+                                Button { text: "Save changes"; primary: true; enabled: root.profile-modified; clicked => { root.profile-action(1, ""); } }
+                                Button { text: root.profile-default ? "★ Startup default" : "Make default"; enabled: !root.profile-default && !root.profile-modified; clicked => { root.profile-action(2, ""); } }
+                                Rectangle { horizontal-stretch: 1; background: transparent; }
+                                Button { text: "Delete"; danger: true; enabled: root.can-delete-profile; clicked => { root.confirm-delete = true; } }
+                            }
+                            Label { text: root.default-profile-label; font-size: 11px; }
+                        }
+                    }
+                    Panel {
+                        height: 155px;
+                        VerticalLayout {
+                            padding: 22px; spacing: 12px;
+                            Label { text: "SAVE AS A NEW PROFILE"; font-size: 11px; }
+                            HorizontalLayout {
+                                spacing: 12px;
+                                LineEdit { text <=> root.new-profile-name; placeholder-text: "e.g. Podcast, Gaming, Late night…"; accepted => { root.profile-action(0, root.new-profile-name); } }
+                                Button { text: "Save as new"; enabled: root.new-profile-name != ""; clicked => { root.profile-action(0, root.new-profile-name); } }
+                            }
+                            Label { text: "Captures your current boost, all five EQ bands and every processing setting."; wrap: word-wrap; font-size: 11px; }
+                        }
+                    }
+                    Label { text: "The default profile loads when MicLift starts. Without one, your last settings resume.\nDevice routing, Live Listen and Windows preferences stay independent."; wrap: word-wrap; }
+                    Rectangle { vertical-stretch: 1; background: transparent; }
+                }
+
+                if root.page == 3: Page {
                     spacing: 15px;
                     Panel {
-                        height: 220px;
+                        height: 255px;
                         VerticalLayout {
                             padding: 20px; spacing: 13px;
                             Label { text: "WINDOWS & BACKGROUND"; font-size: 11px; }
@@ -281,6 +402,7 @@ export component MainWindow inherits Window {
                             CheckBox { text: "Start minimized to tray"; checked <=> root.start-minimized; toggled => { root.preference(1, self.checked); } }
                             CheckBox { text: "Start audio automatically"; checked <=> root.start-audio; toggled => { root.preference(2, self.checked); } }
                             CheckBox { text: "Close window to tray"; checked <=> root.close-tray; toggled => { root.preference(3, self.checked); } }
+                            CheckBox { text: "Reduce interface motion"; checked <=> root.reduce-motion; toggled => { root.preference(4, self.checked); } }
                         }
                     }
                     Panel {
@@ -297,7 +419,7 @@ export component MainWindow inherits Window {
                     Rectangle { vertical-stretch: 1; background: transparent; }
                 }
 
-                if root.page == 4: VerticalLayout {
+                if root.page == 4: Page {
                     spacing: 20px;
                     Panel { height: 370px; VerticalLayout { padding: 25px; spacing: 16px; Heading { text: "MicLift " + root.version; } Label { text: "Microphone boost · 5-band EQ · real-time monitoring"; } Label { text: "Native Rust + WASAPI engine. MIT-licensed application code."; wrap: word-wrap; } Label { text: "No account. No telemetry. No audio recordings."; } HorizontalLayout { AboutSlint { preferred-width: 270px; max-width: 300px; } Rectangle { horizontal-stretch: 1; background: transparent; } } } }
                     Label { text: "Windows 10 22H2 / Windows 11 · x64"; }
@@ -309,6 +431,29 @@ export component MainWindow inherits Window {
                     spacing: 6px;
                     Text { text: root.status-text; color: root.running ? #72f1bd : #aebdca; font-size: 11px; wrap: word-wrap; }
                     Label { text: root.timing-text; font-size: 10px; wrap: word-wrap; }
+                }
+            }
+        }
+    }
+
+    if root.pending-profile || root.confirm-delete: Rectangle {
+        background: #050a10cc;
+        TouchArea { }
+        Panel {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: 540px; height: 226px;
+            border-color: #476354;
+            VerticalLayout {
+                padding: 24px; spacing: 16px;
+                Heading { text: root.confirm-delete ? "Delete this profile?" : "Keep your changes?"; font-size: 23px; }
+                Label { text: root.confirm-delete ? "This removes the saved profile and its startup default, if set. Your other profiles stay saved." : "You have unsaved changes. Save them before switching to “" + root.pending-profile-name + "”, or discard the edits."; wrap: word-wrap; }
+                HorizontalLayout {
+                    spacing: 10px;
+                    Button { text: "Cancel"; clicked => { root.profile-action(6, ""); } }
+                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                    if !root.confirm-delete: Button { text: "Discard & switch"; clicked => { root.profile-action(5, ""); } }
+                    Button { text: root.confirm-delete ? "Delete profile" : "Save & switch"; primary: !root.confirm-delete; danger: root.confirm-delete; clicked => { root.profile-action(root.confirm-delete ? 3 : 4, ""); } }
                 }
             }
         }

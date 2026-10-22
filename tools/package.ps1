@@ -35,7 +35,7 @@ try {
         Sign-Artifact $installer
         $stage = Join-Path $root "target\package-$version"
         New-Item -ItemType Directory -Path $stage -Force | Out-Null
-        foreach ($file in @('target\release\miclift.exe','target\release\miclift-diagnostics.exe','README.md','LICENSE','THIRD_PARTY_NOTICES.md')) { Copy-Item -LiteralPath (Join-Path $root $file) -Destination $stage -Force }
+        foreach ($file in @('target\release\miclift.exe','target\release\miclift-diagnostics.exe','README.md','CHANGELOG.md','LICENSE','THIRD_PARTY_NOTICES.md')) { Copy-Item -LiteralPath (Join-Path $root $file) -Destination $stage -Force }
         Copy-Item -LiteralPath (Join-Path $root 'licenses') -Destination $stage -Recurse -Force
         Get-ChildItem -LiteralPath $stage -File -Recurse | Where-Object LastWriteTime -LT ([datetime]'1980-01-01') | ForEach-Object { $_.LastWriteTime = [datetime]'1980-01-01' }
         $zip = Join-Path $dist "MicLift-$version-windows-x64-portable.zip"

@@ -1,11 +1,17 @@
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.2.0-alpha.1"
 #endif
 #ifndef AppRoot
   #define AppRoot ".."
 #endif
 [Setup]
+#ifdef SmokeTest
+AppId=MicLift.InstallerSmoke
+AppMutex=Local\MicLift.InstallerSmoke.v1
+#else
 AppId={{6D5B96D2-A5C7-4E9F-A30B-1BDB8AE772CB}
+AppMutex=Local\MicLift.Instance.v1
+#endif
 AppName=MicLift
 AppVersion={#AppVersion}
 AppPublisher=MicLift contributors
@@ -26,13 +32,13 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
 RestartApplications=no
-AppMutex=Local\MicLift.Instance.v1
 UninstallDisplayName=MicLift
 
 [Files]
 Source: "{#AppRoot}\target\release\miclift.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#AppRoot}\target\release\miclift-diagnostics.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#AppRoot}\README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#AppRoot}\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#AppRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#AppRoot}\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#AppRoot}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion recursesubdirs
@@ -44,8 +50,10 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 Name: "{group}\MicLift"; Filename: "{app}\miclift.exe"
 Name: "{autodesktop}\MicLift"; Filename: "{app}\miclift.exe"; Tasks: desktopicon
 
+#ifndef SmokeTest
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "MicLift"; Flags: uninsdeletevalue
+#endif
 
 [Run]
 Filename: "{app}\miclift.exe"; Description: "Launch MicLift"; Flags: nowait postinstall skipifsilent runasoriginaluser

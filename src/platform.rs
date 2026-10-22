@@ -29,6 +29,21 @@ pub fn error_dialog(message: &str) {
         );
     }
 }
+pub fn animations_enabled() -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        SPI_GETCLIENTAREAANIMATION, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
+    };
+    let mut enabled = windows::core::BOOL(1);
+    unsafe {
+        let _ = SystemParametersInfoW(
+            SPI_GETCLIENTAREAANIMATION,
+            0,
+            Some((&mut enabled as *mut windows::core::BOOL).cast()),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        );
+    }
+    enabled.as_bool()
+}
 pub fn open_url(url: &str) -> Result<()> {
     anyhow::ensure!(
         url.starts_with("https://"),

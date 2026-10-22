@@ -2,7 +2,7 @@
 use anyhow::{Context, Result};
 use miclift::{
     audio::{Devices, Engine},
-    config::Config,
+    config::{Config, EQ_PRESETS},
     dsp, platform,
 };
 use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel};
@@ -25,6 +25,8 @@ struct App {
     preview: bool,
     bands_model: Rc<VecModel<Band>>,
     eq_rate: Cell<u32>,
+    pending_profile: RefCell<Option<String>>,
+    system_motion: bool,
 }
 impl App {
     fn notice(&self, message: impl Into<SharedString>) {
@@ -88,6 +90,53 @@ impl App {
         ui.set_start_minimized(config.start_minimized);
         ui.set_start_audio(config.start_audio);
         ui.set_close_tray(config.close_to_tray);
+        ui.set_reduce_motion(config.reduce_motion);
+        ui.global::<Motion>()
+            .set_enabled(self.system_motion && !config.reduce_motion);
+        let names: Vec<_> = config.saved_profiles.keys().cloned().collect();
+        ui.set_profile_index(
+            names
+                .iter()
+                .position(|name| *name == config.active_profile)
+                .map_or(-1, |index| index as i32),
+        );
+        ui.set_profile_names(ModelRc::new(VecModel::from(
+            names
+                .into_iter()
+                .map(SharedString::from)
+                .collect::<Vec<_>>(),
+        )));
+        ui.set_profile_modified(config.profile_modified());
+        ui.set_profile_default(config.active_profile == config.default_profile);
+        ui.set_can_delete_profile(config.saved_profiles.len() > 1);
+        ui.set_default_profile_label(if config.default_profile.is_empty() {
+            "Startup: resume your last settings".into()
+        } else {
+            format!("Startup default: {}", config.default_profile).into()
+        });
+        ui.set_profile_details(
+            format!(
+                "{}% boost  ·  {}  ·  {}",
+                voice.boost.round(),
+                if voice.eq_enabled {
+                    "5-band EQ on"
+                } else {
+                    "EQ bypassed"
+                },
+                [
+                    voice.high_pass.then_some("High-pass"),
+                    voice.gate.then_some("Gate"),
+                    voice.compressor.then_some("Compressor"),
+                    voice.limiter.then_some("Limiter")
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+                .join(" + ")
+            )
+            .into(),
+        );
+        ui.set_eq_preset_index(voice.eq_preset_index());
         for (index, band) in voice.bands.iter().enumerate() {
             self.bands_model.set_row_data(
                 index,
@@ -346,6 +395,84 @@ fn connect(ui: &MainWindow, tray: &Tray, app: &Rc<App>) {
         app.config.borrow_mut().voice.preset(name.as_str());
         app.changed();
     });
+    callback!(on_select_profile, |app, index| {
+        let name = app
+            .config
+            .borrow()
+            .saved_profiles
+            .keys()
+            .nth(index as usize)
+            .cloned();
+        if let Some(name) = name {
+            let config = app.config.borrow();
+            let same = name == config.active_profile;
+            let modified = config.profile_modified();
+            drop(config);
+            if same {
+                return;
+            }
+            if modified {
+                *app.pending_profile.borrow_mut() = Some(name.clone());
+                if let Some(ui) = app.ui.upgrade() {
+                    ui.set_pending_profile_name(name.into());
+                    ui.set_pending_profile(true);
+                }
+                app.sync_settings();
+            } else {
+                let result = app.config.borrow_mut().select_profile(&name);
+                match result {
+                    Ok(()) => {
+                        app.changed();
+                        app.persist();
+                    }
+                    Err(error) => app.notice(error.to_string()),
+                }
+            }
+        }
+    });
+    callback!(on_profile_action, |app, action, name| {
+        let result = (|| -> Result<()> {
+            let mut config = app.config.borrow_mut();
+            match action {
+                0 => config.save_profile_as(name.as_str())?,
+                1 => config.save_active_profile()?,
+                2 => {
+                    config.make_profile_default();
+                }
+                3 => config.delete_active_profile()?,
+                4 | 5 => {
+                    let pending = app
+                        .pending_profile
+                        .borrow()
+                        .clone()
+                        .context("No profile switch pending.")?;
+                    if action == 4 {
+                        config.save_active_profile()?;
+                    }
+                    config.select_profile(&pending)?;
+                }
+                6 => {}
+                _ => return Ok(()),
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => {
+                app.pending_profile.borrow_mut().take();
+                if let Some(ui) = app.ui.upgrade() {
+                    ui.set_pending_profile(false);
+                    ui.set_confirm_delete(false);
+                    if action == 0 {
+                        ui.set_new_profile_name("".into());
+                    }
+                }
+                app.notice("");
+                app.changed();
+                app.persist();
+            }
+            Err(error) => app.notice(error.to_string()),
+        }
+    });
     callback!(on_select_input, |app, index| {
         let id = app
             .devices
@@ -404,6 +531,7 @@ fn connect(ui: &MainWindow, tray: &Tray, app: &Rc<App>) {
                 1 => config.start_minimized = value,
                 2 => config.start_audio = value,
                 3 => config.close_to_tray = value,
+                4 => config.reduce_motion = value,
                 _ => {}
             }
         }
@@ -551,6 +679,8 @@ fn run() -> Result<()> {
     if screenshot.is_none() && !ui_test && benchmark.is_none() {
         config.start_with_windows = platform::autostart_enabled();
     }
+    config.ensure_profiles();
+    config.apply_startup_profile();
     let first_run = !config.setup_complete;
     let hidden =
         !first_run && (config.start_minimized || args.iter().any(|arg| arg == "--minimized"));
@@ -576,6 +706,8 @@ fn run() -> Result<()> {
         preview: screenshot.is_some() || benchmark.is_some() || ui_test,
         bands_model: Rc::new(VecModel::from(vec![Band::default(); 5])),
         eq_rate: Cell::new(48000),
+        pending_profile: RefCell::new(None),
+        system_motion: platform::animations_enabled(),
     });
     app.sync_devices(app.engine.status.lock().unwrap().devices.clone());
     app.engine.parameters.store(&app.config.borrow().voice);
@@ -584,6 +716,9 @@ fn run() -> Result<()> {
         Ordering::Relaxed,
     );
     ui.set_bands(app.bands_model.clone().into());
+    ui.set_eq_presets(ModelRc::new(VecModel::from(
+        EQ_PRESETS.map(SharedString::from).to_vec(),
+    )));
     app.sync_settings();
     connect(&ui, &tray, &app);
     if benchmark.is_some() && args.iter().any(|arg| arg == "--monitor") {
@@ -627,6 +762,54 @@ fn run() -> Result<()> {
                 anyhow::ensure!(
                     app.config.borrow().monitor_volume == 0.25,
                     "Monitor volume callback failed"
+                );
+                ui.invoke_profile_action(0, "Podcast test".into());
+                anyhow::ensure!(
+                    app.config.borrow().active_profile == "Podcast test",
+                    "Save-as callback failed"
+                );
+                ui.invoke_profile_action(2, "".into());
+                anyhow::ensure!(ui.get_profile_default(), "Default profile callback failed");
+                ui.invoke_gain_changed(225.0);
+                anyhow::ensure!(ui.get_profile_modified(), "Unsaved indicator failed");
+                ui.invoke_select_profile(0);
+                anyhow::ensure!(ui.get_pending_profile(), "Unsaved switch was not guarded");
+                ui.invoke_profile_action(6, "".into());
+                anyhow::ensure!(
+                    !ui.get_pending_profile() && ui.get_boost() == 225.0,
+                    "Cancel lost profile edits"
+                );
+                ui.invoke_select_profile(0);
+                ui.invoke_profile_action(4, "".into());
+                anyhow::ensure!(
+                    app.config.borrow().active_profile == "My setup",
+                    "Save-and-switch failed"
+                );
+                ui.invoke_select_profile(1);
+                anyhow::ensure!(
+                    ui.get_boost() == 225.0 && !ui.get_profile_modified(),
+                    "Profile did not restore saved boost"
+                );
+                ui.invoke_gain_changed(300.0);
+                ui.invoke_select_profile(0);
+                ui.invoke_profile_action(5, "".into());
+                ui.invoke_select_profile(1);
+                anyhow::ensure!(ui.get_boost() == 225.0, "Discard overwrote saved settings");
+                ui.invoke_profile_action(3, "".into());
+                anyhow::ensure!(
+                    app.config.borrow().saved_profiles.len() == 1
+                        && app.config.borrow().default_profile.is_empty(),
+                    "Profile deletion failed"
+                );
+                ui.invoke_preset("Podcast".into());
+                anyhow::ensure!(
+                    ui.get_eq_preset_index() == 3,
+                    "Podcast dropdown state failed"
+                );
+                ui.invoke_preference(4, true);
+                anyhow::ensure!(
+                    !ui.global::<Motion>().get_enabled(),
+                    "Reduced motion did not disable animations"
                 );
                 // These preferences do not touch the registry. Preview mode never saves profiles.
                 for index in 1..=3 {

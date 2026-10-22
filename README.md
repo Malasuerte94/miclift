@@ -6,7 +6,7 @@ A lightweight, open-source Windows microphone booster with a native studio-style
 
 ![MicLift overview](assets/overview.png)
 
-**0–500% microphone boost · five-band parametric EQ · live listening · system tray**
+**0–500% microphone boost · five-band parametric EQ · saved profiles · live listening · system tray**
 
 MicLift is a new application written in Rust, using WASAPI directly for shared-mode audio and Slint for its native UI. It does not use a browser runtime, record your microphone to files, send audio over the network, or require an account. Application code is MIT licensed. Slint and other dependencies have their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
@@ -29,12 +29,16 @@ The normal public build opens the official VB-Audio setup page. Automatic downlo
 ## Features and behavior
 
 - Boost 0–500%, smoothed live parameter changes, and independent per-endpoint microphone profiles.
-- Five peaking EQ bands with editable frequency, gain and Q; Flat, Voice and Warm presets.
+- Named sound profiles save boost, all EQ bands and processing settings. Switch live from Overview, Equalizer or Processing; manage saved profiles on the Profiles page.
+- Save changes explicitly or use Save as new. Switching away from unsaved edits offers Save & switch, Discard & switch or Cancel. Deletion requires confirmation and retains at least one profile.
+- Choose a saved profile as the startup default. Until you choose one, MicLift resumes the last settings. Existing alpha 0.1 settings migrate automatically into My setup without changing boost, routing or startup preferences.
+- Five peaking EQ bands with editable frequency, gain and Q; a dropdown offers Flat, Voice, Warm, Podcast and Bright. EQ presets change only the equalizer, preserving boost and other processing choices.
 - Optional 80 Hz high-pass, envelope-based gate with hold, compressor and zero-lookahead soft peak limiter.
 - Start with Windows (at user sign-in), start minimized, start audio automatically, and close to tray are separate options, initially off except close to tray.
 - The first run always opens the window. Start audio once to finish setup. Live Listen is always off on launch.
 - Closing to tray keeps audio running. **Exit** in the tray stops audio and releases the devices. **Stop audio** actually stops the streams; it is not passthrough.
 - When hidden to tray, the meter timer stops. Native minimization suppresses meter/model updates. There are no continuously animated waveforms or FFT displays.
+- Short hover/press, navigation and page transitions run only when interacting with the visible UI. Windows animation preferences are respected; Settings also has a Reduce interface motion option.
 - Saved endpoint IDs are retained while disconnected. The control worker retries unavailable devices; it does not silently switch to another microphone.
 - Losing a Live Listen output disables monitoring and restores the microphone-to-cable route. Select an available output and re-enable Live Listen to resume it.
 - One instance per user session. Launching a second instance requests the existing window to open.
@@ -82,7 +86,7 @@ The headless soak measures the engine process; test the actual tray app separate
 
 For a complete-app tray test, use `miclift.exe --benchmark-seconds 7200 --report C:\absolute\path\tray.json`. This uses in-memory default settings, briefly renders the overview, then processes your microphone while hidden in tray and exits after the requested duration. Add `--monitor` to include Live Listen. Run it without another MicLift instance. `miclift.exe --ui-self-test` exercises UI callbacks and tray meter suspension with in-memory settings and no audio streams.
 
-For developer visual checks: `miclift.exe --screenshot C:\absolute\path\preview.png --page 0`. Pages 0–4 cover Overview, Equalizer, Processing, Settings and About. This mode uses temporary in-memory settings and writes only the requested screenshot.
+For developer visual checks: `miclift.exe --screenshot C:\absolute\path\preview.png --page 0`. Pages 0–5 cover Overview, Equalizer, Processing, Settings, About and Profiles. This mode uses temporary in-memory settings and writes only the requested screenshot.
 
 ## License and attribution
 
