@@ -24,6 +24,7 @@ struct App {
     dirty: Cell<bool>,
     preview: bool,
     bands_model: Rc<VecModel<Band>>,
+    eq_rate: Cell<u32>,
 }
 impl App {
     fn notice(&self, message: impl Into<SharedString>) {
@@ -100,8 +101,10 @@ impl App {
         let mut path = String::new();
         use std::fmt::Write;
         for index in 0..=120 {
-            let frequency = 20.0 * 1000.0_f32.powf(index as f32 / 120.0);
-            let db = dsp::response_db(&voice, 48000.0, frequency).clamp(-18.0, 18.0);
+            let rate = self.eq_rate.get() as f32;
+            let top = (rate * 0.45).min(20000.0);
+            let frequency = 20.0 * (top / 20.0).powf(index as f32 / 120.0);
+            let db = dsp::response_db(&voice, rate, frequency).clamp(-18.0, 18.0);
             let _ = write!(
                 path,
                 "{} {:.2} {:.2} ",
@@ -111,6 +114,7 @@ impl App {
             );
         }
         ui.set_eq_curve(path.into());
+        ui.set_eq_top_frequency((self.eq_rate.get() as f32 * 0.45).min(20000.0));
     }
     fn sync_devices(&self, devices: Devices) {
         let Some(ui) = self.ui.upgrade() else {
@@ -192,6 +196,10 @@ impl App {
             return;
         }
         let state = self.engine.status.lock().unwrap().clone();
+        if state.running && state.input_rate > 0 && state.input_rate != self.eq_rate.get() {
+            self.eq_rate.set(state.input_rate);
+            self.sync_settings();
+        }
         if *self.devices.borrow()
             != (Devices {
                 inputs: state
@@ -567,6 +575,7 @@ fn run() -> Result<()> {
         dirty: Cell::new(false),
         preview: screenshot.is_some() || benchmark.is_some() || ui_test,
         bands_model: Rc::new(VecModel::from(vec![Band::default(); 5])),
+        eq_rate: Cell::new(48000),
     });
     app.sync_devices(app.engine.status.lock().unwrap().devices.clone());
     app.engine.parameters.store(&app.config.borrow().voice);

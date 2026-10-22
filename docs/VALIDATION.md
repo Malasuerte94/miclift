@@ -11,6 +11,7 @@ Reference machine: Windows 11 Pro build 26300, AMD Ryzen 9 9950X3D (32 logical p
 | Formatting, Clippy with all features | Passed |
 | Automated tests | 13 passed: atomic settings-file persistence/preservation, unity and 5x gain, limiter, EQ response, high-pass, gate, compressor, smoothing, profiles, atomic parameter snapshots, no hot-path allocation, rate conversion, anti-alias rejection, bounded queues and simulated clock drift |
 | Native UI callback self-test | Passed: boost, EQ row updates, processing, presets, monitor volume, per-input selection, preferences, show/hide and stopped meter timer in tray; uses in-memory settings |
+| Single instance | Second process exits successfully and activates the existing MicLift window; only one process remains |
 | Opt-in Windows tests | 4 passed locally: live gain/mute without stream restart, true stop/release, recovery from a failed endpoint start, missing monitor fallback, and startup registration read-back with original registry value restored |
 | Visual inspection | All five pages rendered and inspected; RGBA preview encoding corrected, and overview/EQ layout clipping repaired |
 | Installer | Clean install, upgrade, installed executable self-test and uninstall passed; no driver installed during these checks |

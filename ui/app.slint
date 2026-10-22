@@ -81,6 +81,7 @@ export component MainWindow inherits Window {
     in property <string> detail-text: "";
     in property <[Band]> bands;
     in property <string> eq-curve;
+    in property <float> eq-top-frequency: 20000;
     in-out property <bool> eq-enabled: true;
     in-out property <bool> high-pass;
     in-out property <bool> gate;
@@ -250,7 +251,7 @@ export component MainWindow inherits Window {
                                 Text { text: (round(band.gain * 10) / 10) + " dB"; color: #72f1bd; font-size: 20px; horizontal-alignment: center; }
                                 Slider { minimum: -12; maximum: 12; value: band.gain; orientation: vertical; height: 125px; changed(value) => { root.change-band(index, 1, value); } }
                                 Label { text: "FREQUENCY · Hz"; font-size: 9px; }
-                                SpinBox { min-width: 0px; minimum: 20; maximum: 20000; value: round(band.frequency); edited(value) => { root.change-band(index, 0, value); } }
+                                SpinBox { min-width: 0px; minimum: 20; maximum: round(root.eq-top-frequency); value: round(min(band.frequency, root.eq-top-frequency)); edited(value) => { root.change-band(index, 0, value); } }
                                 Label { text: "Q · " + (round(band.q * 10) / 10); }
                                 Slider { minimum: 0.1; maximum: 12; value: band.q; changed(value) => { root.change-band(index, 2, value); } }
                             }
