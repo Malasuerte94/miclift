@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-alpha.1
+## 0.2.0-alpha.2
 
 - Add named profiles capturing microphone boost, five-band EQ and every processing setting.
 - Switch profiles live from the audio pages, save edits or create a new profile, select a startup default and delete unused profiles.
@@ -10,5 +10,6 @@
 - Respect Windows animation preferences and add a Reduce interface motion setting. No looping graphics or new tray timers.
 - Migrate alpha 0.1 settings, preserving current sound, per-microphone settings, routing and Windows startup preferences. A migrated My setup profile captures the current sound; a startup default is opt-in.
 - Isolate installer smoke checks from an existing user installation and keep the saved profile library outside the audio supervisor.
+- Merge dependency PRs #1–#5: update the pinned GitHub Actions and winreg 0.56. Adapt the startup registry restoration test to winreg's owned `RegValue<'static>` API.
 
 Initial builds remain unsigned. Physical device compatibility and the two-hour soak validation limitations documented in docs/VALIDATION.md still apply.

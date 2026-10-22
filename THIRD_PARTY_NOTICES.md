@@ -302,13 +302,12 @@ This inventory comes from Cargo.lock and the resolved Windows dependency graph, 
 | windows-result | 0.4.1 | MIT OR Apache-2.0 | [texts](licenses/windows-result-0.4.1/) |
 | windows-strings | 0.5.1 | MIT OR Apache-2.0 | [texts](licenses/windows-strings-0.5.1/) |
 | windows-sys | 0.52.0 | MIT OR Apache-2.0 | [texts](licenses/windows-sys-0.52.0/) |
-| windows-sys | 0.59.0 | MIT OR Apache-2.0 | [texts](licenses/windows-sys-0.59.0/) |
 | windows-sys | 0.61.2 | MIT OR Apache-2.0 | [texts](licenses/windows-sys-0.61.2/) |
 | windows-targets | 0.52.6 | MIT OR Apache-2.0 | [texts](licenses/windows-targets-0.52.6/) |
 | windows-threading | 0.2.1 | MIT OR Apache-2.0 | [texts](licenses/windows-threading-0.2.1/) |
 | winit | 0.30.13 | Apache-2.0 | [texts](licenses/winit-0.30.13/) |
 | winnow | 1.0.4 | MIT | [texts](licenses/winnow-1.0.4/) |
-| winreg | 0.55.0 | MIT | [texts](licenses/winreg-0.55.0/) |
+| winreg | 0.56.0 | MIT | [texts](licenses/winreg-0.56.0/) |
 | winresource | 0.1.34 | MIT | [texts](licenses/winresource-0.1.34/) |
 | writeable | 0.6.4 | Unicode-3.0 | [texts](licenses/writeable-0.6.4/) |
 | xml-rs | 0.8.29 | MIT | [texts](licenses/xml-rs-0.8.29/) |

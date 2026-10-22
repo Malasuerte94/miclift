@@ -94,7 +94,7 @@ fn startup_registration_roundtrip_restores_the_original_value() {
     use winreg::{RegKey, RegValue, enums::HKEY_CURRENT_USER};
     struct Restore {
         key: RegKey,
-        value: Option<RegValue>,
+        value: Option<RegValue<'static>>,
     }
     impl Drop for Restore {
         fn drop(&mut self) {

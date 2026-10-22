@@ -4,11 +4,11 @@ Initial validation on 22 October 2026. This is an **alpha**, not a claim of univ
 
 Reference machine: Windows 11 Pro build 26300, AMD Ryzen 9 9950X3D (32 logical processors), HyperX Cloud III S Wireless microphone and dongle output, installed VB-CABLE. Microphone, cable render and headphone periods negotiated to 10 ms. VB-CABLE render format was 48 kHz; its capture format was 44.1 kHz.
 
-## 0.2.0-alpha.1 update
+## 0.2.0-alpha.2 update
 
 Validated locally on 22 October 2026:
 
-- Formatting and Clippy (all targets/features) passed. All 16 automatic tests passed; four opt-in hardware/registry tests were left disabled while the installed app was in use.
+- Formatting and Clippy (all targets/features) passed. All 16 automatic tests passed; three opt-in live-audio tests were left disabled while the installed app was in use. The opt-in startup registry roundtrip was run separately with winreg 0.56 and passed, restoring the user's original value.
 - Settings tests cover schema-1 migration without modifying the source file, complete named-profile persistence, restoring startup defaults, saving edits, deletion/fallback, name validation and EQ presets preserving boost/processing.
 - Release UI self-test passed: save-as, default selection, unsaved-switch confirmation, cancel, save-and-switch, discard-and-switch, restoring saved boost, deletion and reduced-motion behavior, plus the original audio controls and tray timer checks. This uses in-memory settings and does not open audio streams.
 - All six release-build pages rendered and were visually inspected. Buttons were corrected to center their labels and use compact widths; the profile page and EQ dropdown fit the supported window size.
