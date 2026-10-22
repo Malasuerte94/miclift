@@ -17,7 +17,7 @@ anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rtrb = "0.4"
-winreg = "0.55"
+winreg = "0.56"
 png = "0.18"
 slint = { version = "=1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-18", "system-tray", "accessibility"] }
 windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Media_Audio", "Win32_Media_KernelStreaming", "Win32_Media_Multimedia", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Threading", "Win32_System_Registry", "Win32_System_Performance", "Win32_System_ProcessStatus", "Win32_UI_Shell", "Win32_UI_Shell_PropertiesSystem", "Win32_UI_WindowsAndMessaging", "Win32_Devices_FunctionDiscovery", "Win32_System_Variant", "Win32_System_Memory", "Win32_Security"] }
