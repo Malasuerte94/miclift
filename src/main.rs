@@ -3,7 +3,9 @@ use anyhow::{Context, Result};
 use miclift::{
     audio::{Devices, Engine},
     config::{Config, EQ_PRESETS},
-    dsp, platform,
+    dsp,
+    levels::{Levels, POINTS},
+    platform,
 };
 use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel};
 use std::{
@@ -20,6 +22,7 @@ struct App {
     devices: RefCell<Devices>,
     engine: Engine,
     meters: Timer,
+    graph_revision: Cell<Option<u64>>,
     save_timer: Timer,
     dirty: Cell<bool>,
     preview: bool,
@@ -77,6 +80,11 @@ impl App {
         let config = self.config.borrow();
         let voice = config.voice;
         ui.set_boost(voice.boost);
+        let ratio = format!("{:.2}", voice.linear_gain());
+        ui.set_gain_readout(GainReadout {
+            percent: format!("{:.0}%", voice.boost).into(),
+            multiplier: format!("{}×", ratio.trim_end_matches('0').trim_end_matches('.')).into(),
+        });
         ui.set_listen_volume(config.monitor_volume * 100.0);
         ui.set_eq_enabled(voice.eq_enabled);
         ui.set_high_pass(voice.high_pass);
@@ -237,6 +245,65 @@ impl App {
         );
         *self.devices.borrow_mut() = filtered;
     }
+    fn update_graph(&self, ui: &MainWindow, running: bool) {
+        if ui.get_page() != 0 {
+            return;
+        }
+        let points = if running {
+            let Some((revision, points)) = self
+                .engine
+                .telemetry
+                .levels
+                .snapshot(self.graph_revision.get())
+            else {
+                return;
+            };
+            self.graph_revision.set(Some(revision));
+            points
+        } else if self.graph_revision.take().is_some() {
+            Vec::new()
+        } else {
+            return;
+        };
+
+        use std::fmt::Write;
+        let mut input_curve = String::new();
+        let mut output_curve = String::new();
+        for (index, point) in points.iter().enumerate() {
+            let x = POINTS - points.len() + index;
+            let command = if index == 0 { 'M' } else { 'L' };
+            for (curve, rms) in [
+                (&mut input_curve, point.input),
+                (&mut output_curve, point.output),
+            ] {
+                let y = -(20.0 * rms.log10()).clamp(-144.0, 0.0);
+                let _ = write!(curve, "{command}{x} {y:.2} ");
+            }
+        }
+        ui.set_input_curve(input_curve.into());
+        ui.set_output_curve(output_curve.into());
+        let db_label = |rms: f32| match rms {
+            0.0 => "−∞".to_string(),
+            _ => format!("{:.1}", 20.0 * rms.log10()),
+        };
+        if let Some(&Levels { input, output }) = points.last() {
+            ui.set_input_db(db_label(input).into());
+            ui.set_output_db(db_label(output).into());
+            let difference = if input == 0.0 {
+                "—".to_string()
+            } else if output == 0.0 {
+                "−∞ dB".to_string()
+            } else {
+                format!("{:+.1} dB", 20.0 * (output.log10() - input.log10()))
+            };
+            ui.set_level_difference(difference.into());
+        } else {
+            ui.set_input_db("—".into());
+            ui.set_output_db("—".into());
+            ui.set_level_difference("—".into());
+        }
+    }
+
     fn tick(&self) {
         let Some(ui) = self.ui.upgrade() else {
             return;
@@ -269,26 +336,7 @@ impl App {
         ui.set_muted(self.engine.parameters.muted.load(Ordering::Relaxed));
         ui.set_listening(self.engine.parameters.monitor.load(Ordering::Relaxed));
         let telemetry = &self.engine.telemetry;
-        let input = f32::from_bits(telemetry.input_peak.swap(0, Ordering::Relaxed));
-        let output = f32::from_bits(telemetry.output_peak.swap(0, Ordering::Relaxed));
-        let db = |value: f32| {
-            if value < 0.00001 {
-                "−∞ dBFS".to_string()
-            } else {
-                format!("{:.1} dBFS", 20.0 * value.log10())
-            }
-        };
-        ui.set_input_db(db(input).into());
-        ui.set_output_db(db(output).into());
-        let meter = |value: f32| {
-            if value < 0.00001 {
-                0.0
-            } else {
-                ((20.0 * value.log10() + 60.0) / 60.0).clamp(0.0, 1.0)
-            }
-        };
-        ui.set_input_level(meter(input).max(ui.get_input_level() * 0.90));
-        ui.set_output_level(meter(output).max(ui.get_output_level() * 0.90));
+        self.update_graph(&ui, state.running);
         if state.running {
             let queue_ms = telemetry.cable_queue.load(Ordering::Relaxed) as f32 * 1000.0
                 / state.input_rate.max(1) as f32;
@@ -452,6 +500,10 @@ fn connect(ui: &MainWindow, tray: &Tray, app: &Rc<App>) {
                     config.select_profile(&pending)?;
                 }
                 6 => {}
+                7 => {
+                    let active = config.active_profile.clone();
+                    config.select_profile(&active)?;
+                }
                 _ => return Ok(()),
             }
             Ok(())
@@ -701,6 +753,7 @@ fn run() -> Result<()> {
         devices: RefCell::new(Devices::default()),
         engine: Engine::new(),
         meters: Timer::default(),
+        graph_revision: Cell::new(None),
         save_timer: Timer::default(),
         dirty: Cell::new(false),
         preview: screenshot.is_some() || benchmark.is_some() || ui_test,
@@ -744,8 +797,63 @@ fn run() -> Result<()> {
             let result = (|| -> Result<()> {
                 let app = weak.upgrade().context("App unexpectedly dropped")?;
                 let ui = app.ui.upgrade().context("UI unexpectedly dropped")?;
-                ui.invoke_gain_changed(500.0);
-                anyhow::ensure!(ui.get_boost() == 500.0, "Gain callback failed");
+                // Exercise a live edit while the selected profile keeps its saved gain.
+                ui.invoke_gain_changed(352.11267);
+                ui.invoke_profile_action(1, "".into());
+                let saved = app.config.borrow().voice;
+                ui.invoke_gain_changed(200.0);
+                ui.invoke_change_band(2, 1, 4.0);
+                ui.invoke_processing(2, 1.0);
+                ui.invoke_profile_action(7, "".into());
+                anyhow::ensure!(
+                    ui.get_page() == 0
+                        && !ui.get_profile_modified()
+                        && app.config.borrow().voice == saved
+                        && app.engine.parameters.load_changed(&mut 0) == Some(saved),
+                    "Undo did not restore the saved sound and live processor on Overview"
+                );
+                for (boost, percent, multiplier) in [(500.0, "500%", "5×"), (350.0, "350%", "3.5×")]
+                {
+                    ui.invoke_gain_changed(boost);
+                    let shown = ui.get_gain_readout();
+                    let active = app
+                        .engine
+                        .parameters
+                        .load_changed(&mut 0)
+                        .context("Missing live gain")?;
+                    anyhow::ensure!(
+                        ui.get_boost() == boost
+                            && shown.percent == percent
+                            && shown.multiplier == multiplier
+                            && active.boost == boost
+                            && ui.get_profile_modified(),
+                        "Boost readout disagrees with the active gain at {percent}"
+                    );
+                }
+                let settings = app
+                    .engine
+                    .parameters
+                    .load_changed(&mut 0)
+                    .context("Missing live settings")?;
+                let mut processor = dsp::Processor::new(48_000.0);
+                processor.configure(&settings);
+                let mut rms = miclift::levels::RmsWindow::new(48_000);
+                for _ in 0..24_000 {
+                    let input = 1.0e-6;
+                    if let Some(point) = rms.sample(input, processor.process(input)) {
+                        app.engine.telemetry.levels.push(point);
+                    }
+                }
+                app.update_graph(&ui, true);
+                anyhow::ensure!(
+                    ui.get_boost() == 350.0
+                        && ui.get_input_db() == "-120.0"
+                        && ui.get_output_db() == "-109.1"
+                        && ui.get_level_difference() == "+10.9 dB"
+                        && !ui.get_input_curve().is_empty()
+                        && ui.get_input_curve() != ui.get_output_curve(),
+                    "Live boost and overlaid levels disagree"
+                );
                 ui.invoke_change_band(2, 1, 6.0);
                 anyhow::ensure!(
                     app.bands_model.row_data(2).unwrap().gain == 6.0,

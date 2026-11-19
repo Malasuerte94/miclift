@@ -4,6 +4,14 @@ Initial validation on 22 October 2026. This is an **alpha**, not a claim of univ
 
 Reference machine: Windows 11 Pro build 26300, AMD Ryzen 9 9950X3D (32 logical processors), HyperX Cloud III S Wireless microphone and dongle output, installed VB-CABLE. Microphone, cable render and headphone periods negotiated to 10 ms. VB-CABLE render format was 48 kHz; its capture format was 44.1 kHz.
 
+## 0.2.0-alpha.3 update
+
+Local checks on 19 November 2026 used the HyperX microphone and VB-CABLE setup above.
+
+- The release UI self-test saved a profile, edited its gain, EQ and gate, and restored its saved settings to the live processor from Overview. Separate checks covered the 350% and 500% readouts.
+- The shared profile controls fit on Overview, Equalizer and Processing at the default window size. Save and Undo use the profile's existing unsaved-change indicator.
+- Synchronized 50 ms RMS windows measured +10.9 dB at 350% with a quiet test signal and flat EQ. A separate live check at 500% measured −70.61 dBFS on the physical input and −56.57 dBFS on CABLE Output over a four-second interval with the configured EQ and limiter.
+
 ## 0.2.0-alpha.2 update
 
 Validated locally on 22 October 2026:

@@ -66,6 +66,10 @@ fn bounded(value: f32, min: f32, max: f32, default: f32) -> f32 {
     }
 }
 impl VoiceSettings {
+    pub fn linear_gain(&self) -> f32 {
+        self.boost / 100.0
+    }
+
     pub fn sanitize(&mut self) {
         self.boost = bounded(self.boost, 0.0, 500.0, 100.0);
         for band in &mut self.bands {

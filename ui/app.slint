@@ -47,7 +47,22 @@ component Button inherits Rectangle {
     area := TouchArea { enabled: root.enabled; mouse-cursor: pointer; clicked => { focus.focus(); root.clicked(); } }
 }
 
+component ProfileIconButton inherits Button {
+    in property <string> caption;
+    in property <string> icon-path;
+    width: 36px;
+    accessible-label: root.caption;
+    Path {
+        x: 9px; y: 9px; width: 18px; height: 18px;
+        viewbox-width: 24; viewbox-height: 24;
+        commands: root.icon-path; fill: transparent; stroke: #e3edf5; stroke-width: 1.6px;
+        stroke-line-join: round; stroke-line-cap: round;
+    }
+    Tooltip { text: @markdown("\{root.caption}"); }
+}
+
 export struct Band { frequency: float, gain: float, q: float }
+export struct GainReadout { percent: string, multiplier: string }
 
 component Label inherits Text {
     color: #8b99a9;
@@ -95,12 +110,11 @@ component Nav inherits Rectangle {
     }
     touch := TouchArea { mouse-cursor: pointer; clicked => { focus.focus(); root.clicked(); } }
 }
-component Meter inherits Rectangle {
-    in property <float> level;
-    height: 9px;
-    background: #0b121a;
-    border-radius: 4px;
-    Rectangle { width: parent.width * min(1, max(0, root.level)); border-radius: 4px; background: root.level > 0.92 ? #ffb36c : #72f1bd; }
+component SignalTrace inherits Path {
+    viewbox-width: 119;
+    viewbox-height: 144;
+    fit: fill;
+    fill: transparent;
 }
 
 export component MainWindow inherits Window {
@@ -116,6 +130,7 @@ export component MainWindow inherits Window {
     no-frame: true;
     in-out property <int> page: 0;
     in-out property <float> boost: 100;
+    in property <GainReadout> gain-readout;
     in property <bool> running;
     in property <bool> requested;
     in-out property <bool> muted;
@@ -127,10 +142,11 @@ export component MainWindow inherits Window {
     in-out property <int> input-index;
     in-out property <int> cable-index;
     in-out property <int> output-index;
-    in property <float> input-level;
-    in property <float> output-level;
-    in property <string> input-db: "−∞ dBFS";
-    in property <string> output-db: "−∞ dBFS";
+    in property <string> input-curve;
+    in property <string> output-curve;
+    in property <string> input-db: "—";
+    in property <string> output-db: "—";
+    in property <string> level-difference: "—";
     in property <string> status-text: "Ready";
     in property <string> timing-text: "Device periods appear when audio starts";
     in property <string> detail-text: "";
@@ -245,6 +261,18 @@ export component MainWindow inherits Window {
                         Label { text: "PROFILE"; font-size: 10px; width: 48px; }
                         ComboBox { model: root.profile-names; current-index <=> root.profile-index; selected(_) => { root.select-profile(self.current-index); } horizontal-stretch: 1; }
                         Label { text: root.profile-modified ? "● Unsaved" : root.profile-default ? "★ Default" : "Saved"; color: root.profile-modified ? #ffca8b : #72f1bd; width: 77px; font-size: 11px; }
+                        ProfileIconButton {
+                            caption: "Save changes to this profile";
+                            icon-path: "M4 3 H16 L21 8 V21 H3 V3 Z M7 3 V9 H16 V3 M7 21 V14 H17 V21";
+                            enabled: root.profile-modified;
+                            clicked => { root.profile-action(1, ""); }
+                        }
+                        ProfileIconButton {
+                            caption: "Undo unsaved profile changes";
+                            icon-path: "M9 4 L3 10 L9 16 M4 10 H14 C18 10 21 12 21 16 C21 19 18 21 15 21";
+                            enabled: root.profile-modified;
+                            clicked => { root.profile-action(7, ""); }
+                        }
                         Button { text: "Manage"; clicked => { root.page = 5; } }
                     }
                 }
@@ -252,29 +280,29 @@ export component MainWindow inherits Window {
                 if root.page == 0: Page {
                     spacing: 12px;
                     Panel {
-                        height: 90px;
+                        height: 76px;
                         VerticalLayout {
-                            padding: 18px; spacing: 8px;
+                            padding: 12px; spacing: 6px;
                             Label { text: "MICROPHONE"; font-size: 10px; }
                             ComboBox { model: root.input-names; current-index <=> root.input-index; selected(_) => { root.select-input(self.current-index); } }
                         }
                     }
                     Panel {
-                        height: 214px;
+                        height: 176px;
                         VerticalLayout {
-                            padding: 20px; spacing: 8px;
+                            padding: 14px; spacing: 4px;
                             HorizontalLayout {
                                 Label { text: "MICROPHONE BOOST"; font-size: 11px; }
                                 Rectangle { horizontal-stretch: 1; background: transparent; }
                                 Button { text: root.muted ? "Unmute" : "Mute"; width: 86px; clicked => { root.toggle-mute(); } }
                             }
                             HorizontalLayout {
-                                Text { text: round(root.boost) + "%"; color: root.muted ? #8b99a9 : #72f1bd; font-size: 64px; font-weight: 600; }
+                                Text { text: root.gain-readout.percent; color: root.muted ? #8b99a9 : #72f1bd; font-size: 52px; font-weight: 600; }
                                 Rectangle { horizontal-stretch: 1; background: transparent; }
                                 VerticalLayout {
-                                    alignment: center; spacing: 7px;
+                                    width: 118px; alignment: center; spacing: 7px;
                                     Label { text: "AMPLIFICATION"; font-size: 10px; horizontal-alignment: right; }
-                                    Text { text: (round(root.boost / 10) / 10) + "×"; color: #edf4fa; font-size: 26px; horizontal-alignment: right; }
+                                    Text { text: root.gain-readout.multiplier; color: #edf4fa; font-size: 26px; horizontal-alignment: right; }
                                 }
                             }
                             Slider { minimum: 0; maximum: 500; value <=> root.boost; changed(value) => { root.gain-changed(value); } }
@@ -286,11 +314,41 @@ export component MainWindow inherits Window {
                         }
                     }
                     Panel {
-                        height: 82px;
-                        HorizontalLayout {
-                            padding: 18px; spacing: 25px;
-                            VerticalLayout { spacing: 9px; HorizontalLayout { Label { text: "INPUT"; font-size: 10px; } Label { text: root.input-db; horizontal-alignment: right; } } Meter { level: root.input-level; } }
-                            VerticalLayout { spacing: 9px; HorizontalLayout { Label { text: "OUTPUT"; font-size: 10px; } Label { text: root.output-db; horizontal-alignment: right; } } Meter { level: root.output-level; } }
+                        height: 165px;
+                        VerticalLayout {
+                            padding: 13px; spacing: 6px;
+                            HorizontalLayout {
+                                spacing: 14px;
+                                Label { text: "RMS · dBFS"; font-size: 11px; }
+                                Label { text: "Input  " + root.input-db; color: #84b9ff; }
+                                Label { text: "Output  " + root.output-db; color: #72f1bd; }
+                                Rectangle { horizontal-stretch: 1; }
+                                Label { text: "Δ  " + root.level-difference; color: #edf4fa; horizontal-alignment: right; }
+                            }
+                            Rectangle {
+                                background: #0d151f;
+                                border-radius: 4px;
+                                vertical-stretch: 1;
+                                plot := Rectangle {
+                                    x: 36px; y: 8px; width: parent.width - 45px; height: parent.height - 16px;
+                                    for db in [0, 48, 96, 144]: Rectangle {
+                                        y: (parent.height - 1px) * db / 144;
+                                        height: 1px; width: parent.width; background: #283745;
+                                        Label { x: -34px; y: -7px; height: 14px; width: 28px; text: db == 0 ? "0" : "−" + db; font-size: 10px; horizontal-alignment: right; }
+                                    }
+                                    SignalTrace { width: plot.width; height: plot.height; commands: root.input-curve; stroke: #84b9ff; stroke-width: 3px; }
+                                    SignalTrace { width: plot.width; height: plot.height; commands: root.output-curve; stroke: #72f1bd; stroke-width: 1.4px; }
+                                    if root.input-curve == "": Label {
+                                        width: parent.width; height: parent.height; horizontal-alignment: center;
+                                        text: root.running ? "Waiting for samples" : "Audio stopped";
+                                    }
+                                }
+                            }
+                            HorizontalLayout {
+                                padding-left: 36px; padding-right: 9px;
+                                Label { text: "−6 s"; font-size: 10px; }
+                                Label { text: "Now"; font-size: 10px; horizontal-alignment: right; }
+                            }
                         }
                     }
                     Panel {
@@ -339,7 +397,7 @@ export component MainWindow inherits Window {
                             }
                         }
                     }
-                    Label { text: "EQ presets change only the equalizer. Save the full sound in Profiles."; }
+                    Label { text: "EQ presets change only the equalizer. Use Save beside Manage to update the current profile."; }
                     Rectangle { vertical-stretch: 1; background: transparent; }
                 }
 

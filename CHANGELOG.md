@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0-alpha.3
+
+- Save the active sound profile or undo all unsaved sound changes from the icons beside Manage on Overview, Equalizer and Processing.
+- Compare microphone input and processed output on one six-second RMS graph. The traces share a dBFS scale and show the measured gain for each 50 ms interval, including quiet signals.
+- Keep the percentage and amplification multiplier synchronized with the active gain when editing a saved profile.
+
 ## 0.2.0-alpha.2
 
 - Add named profiles capturing microphone boost, five-band EQ and every processing setting.

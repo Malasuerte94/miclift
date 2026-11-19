@@ -137,7 +137,7 @@ impl Processor {
     pub fn configure(&mut self, settings: &VoiceSettings) {
         let mut settings = *settings;
         settings.sanitize();
-        self.target_gain = settings.boost / 100.0;
+        self.target_gain = settings.linear_gain();
         self.gate_threshold = 10.0_f32.powf(settings.gate_threshold_db / 20.0);
         self.compressor_threshold = 10.0_f32.powf(settings.compressor_threshold_db / 20.0);
         let transition = (self.rate * 0.01) as usize;

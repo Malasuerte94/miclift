@@ -81,8 +81,7 @@ impl Parameters {
 
 #[derive(Default)]
 pub struct Telemetry {
-    pub input_peak: AtomicU32,
-    pub output_peak: AtomicU32,
+    pub levels: crate::levels::LevelHistory,
     pub cable_underruns: AtomicU64,
     pub monitor_underruns: AtomicU64,
     pub overruns: AtomicU64,
@@ -102,8 +101,6 @@ pub struct Telemetry {
 }
 impl Telemetry {
     pub fn reset(&self) {
-        self.input_peak.store(0, Ordering::Relaxed);
-        self.output_peak.store(0, Ordering::Relaxed);
         self.cable_underruns.store(0, Ordering::Relaxed);
         self.monitor_underruns.store(0, Ordering::Relaxed);
         self.overruns.store(0, Ordering::Relaxed);

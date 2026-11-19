@@ -449,8 +449,6 @@ impl Engine {
                         state.running = false;
                         state.requested = false;
                         state.message = "Stopped".into();
-                        t.input_peak.store(0, Ordering::Relaxed);
-                        t.output_peak.store(0, Ordering::Relaxed);
                     }
                     Ok(Command::Start(next)) => {
                         pipeline = None;
@@ -705,6 +703,8 @@ fn capture(
 ) -> Result<()> {
     let service: IAudioCaptureClient = unsafe { session.client.GetService()? };
     let mut processor = Processor::new(session.format.rate as f32);
+    let mut rms = crate::levels::RmsWindow::new(session.format.rate);
+    telemetry.levels.start_session();
     let mut sequence = 0;
     let _priority = Mmcss::new();
     telemetry.capture_period_us.store(
@@ -729,7 +729,6 @@ fn capture(
             if flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32 != 0 {
                 telemetry.discontinuities.fetch_add(1, Ordering::Relaxed);
             }
-            let (mut input_peak, mut output_peak) = (0.0_f32, 0.0_f32);
             for frame in 0..frames as usize {
                 let input = if silent {
                     0.0
@@ -741,8 +740,9 @@ fn capture(
                     }
                 };
                 let output = processor.process(input);
-                input_peak = input_peak.max(input.abs());
-                output_peak = output_peak.max(output.abs());
+                if let Some(levels) = rms.sample(input, output) {
+                    telemetry.levels.push(levels);
+                }
                 if cable.push(output).is_err() {
                     telemetry.overruns.fetch_add(1, Ordering::Relaxed);
                 }
@@ -752,12 +752,6 @@ fn capture(
                     telemetry.overruns.fetch_add(1, Ordering::Relaxed);
                 }
             }
-            telemetry
-                .input_peak
-                .fetch_max(input_peak.to_bits(), Ordering::Relaxed);
-            telemetry
-                .output_peak
-                .fetch_max(output_peak.to_bits(), Ordering::Relaxed);
             telemetry.record_dsp(start.elapsed().as_nanos() as u64, frames);
             unsafe {
                 service.ReleaseBuffer(frames)?;
